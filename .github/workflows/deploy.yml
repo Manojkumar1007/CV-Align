@@ -1,0 +1,67 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        cd ../frontend
+        npm ci
+        
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+        
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+        cp -r backend deploy/
+        cp -r frontend/build deploy/frontend-build
+        cp README.md deploy/
+        cp .env.example deploy/
+        
+    - name: Generate deployment info
+      run: |
+        echo "Deployment created at: $(date)" > deploy/deployment-info.txt
+        echo "Git commit: ${{ github.sha }}" >> deploy/deployment-info.txt
+        echo "Branch: ${{ github.ref_name }}" >> deploy/deployment-info.txt
+        
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: cv-align-deployment-${{ github.sha }}
+        path: deploy/
+        retention-days: 30
+        
+    # Uncomment and configure when ready for actual deployment
+    # - name: Deploy to server
+    #   run: |
+    #     echo "Deploy to your server here"
+    #     # scp -r deploy/ user@server:/path/to/deployment
+    #     # ssh user@server "cd /path/to/deployment && ./deploy.sh"
