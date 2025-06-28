@@ -11,7 +11,7 @@ function CandidateEvaluation() {
 
   useEffect(() => {
     fetchEvaluation();
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchEvaluation = async () => {
     try {

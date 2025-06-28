@@ -53,11 +53,12 @@ jobs:
         echo "Branch: ${{ github.ref_name }}" >> deploy/deployment-info.txt
         
     - name: Upload deployment artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: cv-align-deployment-${{ github.sha }}
         path: deploy/
         retention-days: 30
+        compression-level: 6
         
     # Uncomment and configure when ready for actual deployment
     # - name: Deploy to server
