@@ -1,3 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cv-align-backend"
+version = "1.0.0"
+description = "AI-Powered CV Evaluation System Backend"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [tool.black]
 line-length = 88
 target-version = ['py312']
