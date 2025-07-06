@@ -170,6 +170,10 @@ function Login() {
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
+          
+          <div className="forgot-password-link">
+            <Link to="/forgot-password">Forgot your password?</Link>
+          </div>
         </form>
         
         <div className="demo-credentials">

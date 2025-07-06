@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // Mock the auth utility to avoid localStorage issues in tests
@@ -62,11 +62,11 @@ test('App component renders without crashing', () => {
 test('App renders login when not authenticated', () => {
   const App = require('../App').default;
   
-  const { getByTestId } = render(
+  render(
     <MemoryRouter initialEntries={['/login']}>
       <App />
     </MemoryRouter>
   );
   
-  expect(getByTestId('login-page')).toBeInTheDocument();
+  expect(screen.getByTestId('login-page')).toBeInTheDocument();
 });

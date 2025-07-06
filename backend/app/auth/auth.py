@@ -8,10 +8,15 @@ from sqlalchemy.orm import Session
 from app.database.config import get_db
 from app.models.models import User
 import os
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "30"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -82,3 +87,73 @@ def require_role(allowed_roles: list):
             )
         return current_user
     return role_checker
+
+def create_reset_token(email: str) -> str:
+    """Create a password reset token that expires in 30 minutes"""
+    data = {
+        "sub": email,
+        "type": "password_reset",
+        "exp": datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    }
+    token = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+    return token
+
+def verify_reset_token(token: str) -> Optional[str]:
+    """Verify password reset token and return email if valid"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        token_type = payload.get("type")
+        
+        if email is None or token_type != "password_reset":
+            return None
+            
+        return email
+    except JWTError:
+        return None
+
+def send_reset_email(email: str, token: str) -> bool:
+    """Send password reset email (mock implementation for development)"""
+    try:
+        # Mock email sending for development
+        # In production, replace with actual email service (SendGrid, AWS SES, etc.)
+        
+        reset_url = f"http://localhost:3000/reset-password?token={token}"
+        
+        print(f"""
+        ===== PASSWORD RESET EMAIL =====
+        To: {email}
+        Subject: Reset Your CV-Align Password
+        
+        Click the link below to reset your password:
+        {reset_url}
+        
+        This link will expire in {RESET_TOKEN_EXPIRE_MINUTES} minutes.
+        
+        If you didn't request this reset, please ignore this email.
+        =================================
+        """)
+        
+        return True
+    except Exception as e:
+        print(f"Failed to send reset email: {e}")
+        return False
+
+def send_password_changed_notification(email: str) -> bool:
+    """Send notification that password was successfully changed"""
+    try:
+        print(f"""
+        ===== PASSWORD CHANGED NOTIFICATION =====
+        To: {email}
+        Subject: CV-Align Password Changed Successfully
+        
+        Your password has been successfully changed.
+        
+        If you didn't make this change, please contact support immediately.
+        ==========================================
+        """)
+        
+        return True
+    except Exception as e:
+        print(f"Failed to send password changed notification: {e}")
+        return False

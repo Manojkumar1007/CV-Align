@@ -39,6 +39,9 @@ export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   getCurrentUser: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
+  requestPasswordReset: (email) => api.post('/auth/password-reset-request', { email }),
+  confirmPasswordReset: (resetData) => api.post('/auth/password-reset-confirm', resetData),
+  changePassword: (passwordData) => api.post('/auth/change-password', passwordData),
 };
 
 export const jobsAPI = {

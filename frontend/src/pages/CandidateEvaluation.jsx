@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { evaluationsAPI } from '../services/api';
+import { exportEvaluationToPDF, exportEvaluationToExcel } from '../utils/exportUtils';
+import { useToast } from '../components/Toast';
 import './CandidateEvaluation.css';
 
 function CandidateEvaluation() {
@@ -8,6 +10,8 @@ function CandidateEvaluation() {
   const [evaluation, setEvaluation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     fetchEvaluation();
@@ -41,6 +45,34 @@ function CandidateEvaluation() {
     });
   };
 
+  const handleExportPDF = async () => {
+    if (!evaluation || exporting) return;
+    
+    setExporting(true);
+    try {
+      await exportEvaluationToPDF(evaluation);
+      toast.success('PDF report generated successfully!');
+    } catch (error) {
+      toast.error(error.message || 'Failed to generate PDF report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!evaluation || exporting) return;
+    
+    setExporting(true);
+    try {
+      await exportEvaluationToExcel(evaluation);
+      toast.success('Excel file generated successfully!');
+    } catch (error) {
+      toast.error(error.message || 'Failed to generate Excel file');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) return <div className="loading">Loading evaluation...</div>;
   if (error) return <div className="error-message">{error}</div>;
   if (!evaluation) return <div className="error-message">Evaluation not found</div>;
@@ -57,9 +89,29 @@ function CandidateEvaluation() {
             CV: {evaluation.cv_filename} | Evaluated: {formatDate(evaluation.created_at)}
           </p>
         </div>
-        <Link to={`/jobs/${evaluation.job_id}`} className="btn btn-secondary">
-          Back to Job
-        </Link>
+        <div className="header-actions">
+          <div className="export-buttons">
+            <button
+              onClick={handleExportPDF}
+              disabled={exporting}
+              className={`btn btn-outline export-btn ${exporting ? 'loading' : ''}`}
+              title="Export as PDF"
+            >
+              {exporting ? 'Generating...' : '📄 Export PDF'}
+            </button>
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting}
+              className={`btn btn-outline export-btn ${exporting ? 'loading' : ''}`}
+              title="Export as Excel"
+            >
+              {exporting ? 'Generating...' : '📊 Export Excel'}
+            </button>
+          </div>
+          <Link to={`/jobs/${evaluation.job_id}`} className="btn btn-secondary">
+            Back to Job
+          </Link>
+        </div>
       </div>
 
       <div className="evaluation-content">

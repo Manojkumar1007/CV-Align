@@ -154,6 +154,21 @@
   text-decoration: underline;
 }
 
+.forgot-password-link {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.forgot-password-link a {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.forgot-password-link a:hover {
+  text-decoration: underline;
+}
+
 .form-group input.error {
   border-color: #e74c3c;
 }
