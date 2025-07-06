@@ -104,3 +104,85 @@
   font-size: 0.9rem;
   color: #555;
 }
+
+.demo-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.demo-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.demo-btn:hover:not(:disabled) {
+  background-color: #667eea;
+  color: white;
+}
+
+.demo-text {
+  border-top: 1px solid #eee;
+  padding-top: 1rem;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.register-link p {
+  color: #666;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.register-link a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+.form-group input.error {
+  border-color: #e74c3c;
+}
+
+.form-group input.error:focus {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+}
+
+.form-error {
+  color: #e74c3c;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Responsive improvements */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+  
+  .demo-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .demo-btn {
+    min-width: auto;
+  }
+}
