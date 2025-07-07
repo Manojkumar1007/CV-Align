@@ -18,7 +18,7 @@ function JobDetails() {
     fetchJobData();
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchJobData = async () => {
+  const fetchJobData = async (retryCount = 0) => {
     try {
       const [jobResponse, candidatesResponse] = await Promise.all([
         jobsAPI.getJob(id),
@@ -26,8 +26,26 @@ function JobDetails() {
       ]);
       setJob(jobResponse.data);
       setCandidates(candidatesResponse.data);
+      setError(''); // Clear any previous errors
     } catch (error) {
-      setError('Failed to fetch job details');
+      console.error('Error fetching job data:', error);
+      
+      // Retry on network errors (but not on auth/permission errors)
+      if (retryCount < 2 && (!error.response || error.response.status >= 500)) {
+        console.log(`Retrying request (attempt ${retryCount + 1}/2)...`);
+        setTimeout(() => fetchJobData(retryCount + 1), 1000);
+        return;
+      }
+      
+      if (error.response?.status === 401) {
+        setError('Session expired. Please login again.');
+      } else if (error.response?.status === 404) {
+        setError('Job not found or you do not have permission to view this job.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to view this job.');
+      } else {
+        setError(error.response?.data?.detail || 'Failed to fetch job details. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -38,8 +56,27 @@ function JobDetails() {
     setShowUpload(false);
   };
 
+  const handleCandidateDeleted = (deletedCandidateId) => {
+    setCandidates(candidates.filter(candidate => candidate.id !== deletedCandidateId));
+  };
+
   if (loading) return <div className="loading">Loading job details...</div>;
-  if (error) return <div className="error-message">{error}</div>;
+  if (error) return (
+    <div className="error-message">
+      {error}
+      <button 
+        onClick={() => {
+          setError('');
+          setLoading(true);
+          fetchJobData();
+        }}
+        className="btn btn-secondary"
+        style={{ marginLeft: '10px' }}
+      >
+        Retry
+      </button>
+    </div>
+  );
   if (!job) return <div className="error-message">Job not found</div>;
 
   return (
@@ -93,7 +130,7 @@ function JobDetails() {
 
       <div className="candidates-section">
         <h2>Candidates ({candidates.length})</h2>
-        <CandidateList candidates={candidates} />
+        <CandidateList candidates={candidates} onCandidateDeleted={handleCandidateDeleted} />
       </div>
     </div>
   );

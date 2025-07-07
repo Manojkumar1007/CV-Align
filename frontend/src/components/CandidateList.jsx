@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { evaluationsAPI } from '../services/api';
+import { hasRole } from '../utils/auth';
 import './CandidateList.css';
 
-function CandidateList({ candidates }) {
+function CandidateList({ candidates, onCandidateDeleted }) {
+  const [deletingId, setDeletingId] = useState(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [candidateToDelete, setCandidateToDelete] = useState(null);
   const getScoreColor = (score) => {
     if (score >= 80) return '#27ae60';
     if (score >= 65) return '#f39c12';
@@ -18,6 +23,35 @@ function CandidateList({ candidates }) {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleDeleteClick = (candidate) => {
+    setCandidateToDelete(candidate);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!candidateToDelete) return;
+    
+    setDeletingId(candidateToDelete.id);
+    try {
+      await evaluationsAPI.deleteEvaluation(candidateToDelete.id);
+      setShowConfirmDialog(false);
+      setCandidateToDelete(null);
+      if (onCandidateDeleted) {
+        onCandidateDeleted(candidateToDelete.id);
+      }
+    } catch (error) {
+      console.error('Error deleting candidate:', error);
+      alert('Failed to delete candidate. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowConfirmDialog(false);
+    setCandidateToDelete(null);
   };
 
   if (candidates.length === 0) {
@@ -89,10 +123,49 @@ function CandidateList({ candidates }) {
               >
                 View Details
               </Link>
+              {hasRole(['admin', 'recruiter']) && (
+                <button
+                  onClick={() => handleDeleteClick(candidate)}
+                  disabled={deletingId === candidate.id}
+                  className="btn btn-danger"
+                  style={{ marginLeft: '10px' }}
+                >
+                  {deletingId === candidate.id ? 'Deleting...' : 'Delete'}
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
+      
+      {showConfirmDialog && (
+        <div className="modal-overlay" onClick={handleCancelDelete}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete Candidate</h3>
+            <p>
+              Are you sure you want to delete <strong>{candidateToDelete?.candidate_name}</strong>?
+            </p>
+            <p className="warning-text">
+              This action cannot be undone. All evaluation data will be permanently removed.
+            </p>
+            <div className="modal-actions">
+              <button 
+                onClick={handleCancelDelete}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmDelete}
+                className="btn btn-danger"
+                disabled={deletingId}
+              >
+                {deletingId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
