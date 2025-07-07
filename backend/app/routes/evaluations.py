@@ -65,9 +65,14 @@ async def upload_and_evaluate_cv(
             cv_sections, job.description, job.requirements
         )
         
+        # Ensure candidate_name is not None
+        candidate_name = candidate_info.get('name')
+        if not candidate_name or candidate_name.strip() == '':
+            candidate_name = 'Unknown Candidate'
+        
         db_evaluation = Evaluation(
             job_id=job_id,
-            candidate_name=candidate_info.get('name', 'Unknown'),
+            candidate_name=candidate_name,
             candidate_email=candidate_info.get('email'),
             cv_filename=file.filename,
             cv_text=cv_text,

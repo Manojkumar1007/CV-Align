@@ -47,6 +47,15 @@ async def get_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # First check if job exists at all
+    job_exists = db.query(Job).filter(Job.id == job_id).first()
+    if not job_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job with ID {job_id} does not exist"
+        )
+    
+    # Check if user has access to this job (same company)
     job = db.query(Job).filter(
         Job.id == job_id,
         Job.company_id == current_user.company_id
@@ -54,8 +63,8 @@ async def get_job(
     
     if not job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You do not have permission to access job {job_id}. Job belongs to company {job_exists.company_id}, but you belong to company {current_user.company_id}"
         )
     
     return job

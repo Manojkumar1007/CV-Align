@@ -54,7 +54,10 @@ class DocumentProcessor:
         return self._clean_text(text)
     
     def _clean_text(self, text: str) -> str:
-        text = re.sub(r'\s+', ' ', text)
+        # Preserve some line breaks for better section parsing
+        # Convert multiple spaces to single space but keep line breaks
+        text = re.sub(r'[ \t]+', ' ', text)  # Multiple spaces/tabs to single space
+        text = re.sub(r'\n\s*\n', '\n', text)  # Multiple newlines to single newline
         text = text.strip()
         return text
     
@@ -70,53 +73,73 @@ class DocumentProcessor:
         }
         
         text_lower = text.lower()
+        
+        # Try to split by common section headers first
+        section_patterns = {
+            'experience': r'\b(experience|work\s+history|employment|professional\s+experience)\b',
+            'education': r'\b(education|academic|qualification|academic\s+background)\b',
+            'skills': r'\b(skills|technical\s+skills|competencies|core\s+competencies)\b',
+            'summary': r'\b(summary|profile|objective|professional\s+summary)\b',
+            'certifications': r'\b(certification|certificate|license|certifications)\b'
+        }
+        
+        # If text has proper line breaks, use line-by-line processing
         lines = text.split('\n')
-        
-        current_section = 'contact_info'
-        section_content = []
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
+        if len(lines) > 5:  # Proper multi-line text
+            current_section = 'contact_info'
+            section_content = []
             
-            line_lower = line.lower()
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                line_lower = line.lower()
+                
+                # Check if this line is a section header
+                section_found = None
+                for section_name, pattern in section_patterns.items():
+                    if re.search(pattern, line_lower):
+                        section_found = section_name
+                        break
+                
+                if section_found:
+                    if section_content:
+                        sections[current_section] = '\n'.join(section_content)
+                    current_section = section_found
+                    section_content = []
+                    continue
+                
+                section_content.append(line)
             
-            if any(keyword in line_lower for keyword in ['experience', 'work history', 'employment']):
-                if section_content:
-                    sections[current_section] = '\n'.join(section_content)
-                current_section = 'experience'
-                section_content = []
-                continue
-            elif any(keyword in line_lower for keyword in ['education', 'academic', 'qualification']):
-                if section_content:
-                    sections[current_section] = '\n'.join(section_content)
-                current_section = 'education'
-                section_content = []
-                continue
-            elif any(keyword in line_lower for keyword in ['skills', 'technical skills', 'competencies']):
-                if section_content:
-                    sections[current_section] = '\n'.join(section_content)
-                current_section = 'skills'
-                section_content = []
-                continue
-            elif any(keyword in line_lower for keyword in ['summary', 'profile', 'objective']):
-                if section_content:
-                    sections[current_section] = '\n'.join(section_content)
-                current_section = 'summary'
-                section_content = []
-                continue
-            elif any(keyword in line_lower for keyword in ['certification', 'certificate', 'license']):
-                if section_content:
-                    sections[current_section] = '\n'.join(section_content)
-                current_section = 'certifications'
-                section_content = []
-                continue
-            
-            section_content.append(line)
+            if section_content:
+                sections[current_section] = '\n'.join(section_content)
         
-        if section_content:
-            sections[current_section] = '\n'.join(section_content)
+        else:  # Single line or few lines - use regex to extract sections
+            # Extract contact info (first part before any section keywords)
+            contact_match = re.search(r'^(.*?)(?=' + '|'.join(section_patterns.values()) + ')', text, re.IGNORECASE)
+            if contact_match:
+                sections['contact_info'] = contact_match.group(1).strip()
+            
+            # Extract each section using regex
+            for section_name, pattern in section_patterns.items():
+                # Find section start
+                start_match = re.search(pattern, text, re.IGNORECASE)
+                if start_match:
+                    start_pos = start_match.end()
+                    
+                    # Find next section or end of text
+                    next_patterns = [p for p in section_patterns.values() if p != pattern]
+                    end_pos = len(text)
+                    
+                    for next_pattern in next_patterns:
+                        next_match = re.search(next_pattern, text[start_pos:], re.IGNORECASE)
+                        if next_match:
+                            end_pos = min(end_pos, start_pos + next_match.start())
+                    
+                    section_text = text[start_pos:end_pos].strip()
+                    if section_text:
+                        sections[section_name] = section_text
         
         return sections
     
@@ -127,14 +150,62 @@ class DocumentProcessor:
         email_match = re.search(email_pattern, text)
         phone_match = re.search(phone_pattern, text)
         
-        lines = text.split('\n')
+        # Try to extract name from the beginning of the text
         name = None
-        for line in lines[:5]:
-            line = line.strip()
-            if line and len(line.split()) <= 4 and not re.search(r'[^\w\s-.]', line):
-                if not re.search(email_pattern, line) and not re.search(phone_pattern, line):
-                    name = line
-                    break
+        
+        # Always start with the text_start method for more reliable extraction
+        text_start = text[:300]  # First 300 characters
+        
+        # Method 1: Try to find name before phone number
+        phone_match_start = re.search(phone_pattern, text_start)
+        if phone_match_start:
+            potential_name = text_start[:phone_match_start.start()].strip()
+            # Remove common prefixes and clean up
+            potential_name = re.sub(r'^(resume|cv|curriculum\s+vitae)\s*', '', potential_name, flags=re.IGNORECASE)
+            potential_name = re.sub(r'[^\w\s\-\.]', '', potential_name).strip()
+            
+            # Check if it looks like a valid name (2-4 words, not too long)
+            words = potential_name.split()
+            if len(words) >= 2 and len(words) <= 4 and len(potential_name) <= 50:
+                # Additional validation - not common CV sections
+                if not any(section in potential_name.lower() for section in ['education', 'experience', 'skills', 'contact', 'objective', 'summary']):
+                    name = potential_name
+        
+        # Method 2: Try to find name before email if phone method didn't work
+        if not name:
+            email_match_start = re.search(email_pattern, text_start)
+            if email_match_start:
+                potential_name = text_start[:email_match_start.start()].strip()
+                # Remove common prefixes and clean up
+                potential_name = re.sub(r'^(resume|cv|curriculum\s+vitae)\s*', '', potential_name, flags=re.IGNORECASE)
+                potential_name = re.sub(r'[^\w\s\-\.]', '', potential_name).strip()
+                
+                # Check if it looks like a valid name
+                words = potential_name.split()
+                if len(words) >= 2 and len(words) <= 4 and len(potential_name) <= 50:
+                    # Additional validation - not common CV sections
+                    if not any(section in potential_name.lower() for section in ['education', 'experience', 'skills', 'contact', 'objective', 'summary']):
+                        name = potential_name
+        
+        # Method 3: Fallback to line-by-line if text has proper line breaks
+        if not name:
+            lines = text.split('\n')
+            if len(lines) > 1:
+                for line in lines[:3]:  # Check only first 3 lines
+                    line = line.strip()
+                    if line:
+                        # Remove common prefixes
+                        clean_line = re.sub(r'^(resume|cv|curriculum\s+vitae)\s*', '', line, flags=re.IGNORECASE)
+                        clean_line = re.sub(r'[^\w\s\-\.]', '', clean_line).strip()
+                        
+                        words = clean_line.split()
+                        # Valid name criteria: 2-4 words, no emails, no phones, reasonable length
+                        if (len(words) >= 2 and len(words) <= 4 and len(clean_line) <= 50 and
+                            not re.search(email_pattern, clean_line) and 
+                            not re.search(phone_pattern, clean_line) and
+                            not any(section in clean_line.lower() for section in ['education', 'experience', 'skills', 'contact', 'objective', 'summary', 'roll', 'number'])):
+                            name = clean_line
+                            break
         
         return {
             'name': name,
