@@ -4,7 +4,7 @@ import { evaluationsAPI } from '../services/api';
 import { hasRole } from '../utils/auth';
 import './CandidateList.css';
 
-function CandidateList({ candidates, onCandidateDeleted }) {
+function CandidateList({ candidates, onCandidateDeleted, processingUpload }) {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [candidateToDelete, setCandidateToDelete] = useState(null);
@@ -54,7 +54,53 @@ function CandidateList({ candidates, onCandidateDeleted }) {
     setCandidateToDelete(null);
   };
 
-  if (candidates.length === 0) {
+  const LoadingCard = () => (
+    <div className="candidate-card loading-card">
+      <div className="candidate-rank">#1</div>
+      
+      <div className="candidate-info">
+        <div className="loading-placeholder loading-name"></div>
+        <div className="loading-placeholder loading-email"></div>
+        <div className="loading-placeholder loading-file"></div>
+        <div className="loading-placeholder loading-date"></div>
+      </div>
+      
+      <div className="candidate-scores">
+        <div className="overall-score">
+          <div className="score-circle loading-score">
+            <div className="loading-spinner"></div>
+          </div>
+          <span>Processing...</span>
+        </div>
+        
+        <div className="detailed-scores">
+          <div className="score-item">
+            <span className="score-label">Skills:</span>
+            <div className="loading-placeholder loading-score-value"></div>
+          </div>
+          <div className="score-item">
+            <span className="score-label">Experience:</span>
+            <div className="loading-placeholder loading-score-value"></div>
+          </div>
+          <div className="score-item">
+            <span className="score-label">Education:</span>
+            <div className="loading-placeholder loading-score-value"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="candidate-feedback">
+        <div className="loading-placeholder loading-feedback"></div>
+      </div>
+      
+      <div className="candidate-actions">
+        <div className="loading-placeholder loading-button"></div>
+      </div>
+    </div>
+  );
+
+  // Show "no candidates" message only when not processing and no candidates
+  if (candidates.length === 0 && !processingUpload) {
     return (
       <div className="no-candidates">
         <p>No candidates have been evaluated for this job yet.</p>
@@ -72,6 +118,7 @@ function CandidateList({ candidates, onCandidateDeleted }) {
       </div>
       
       <div className="candidates-grid">
+        {processingUpload && <LoadingCard />}
         {candidates.map((candidate, index) => (
           <div key={candidate.id} className="candidate-card">
             <div className="candidate-rank">#{index + 1}</div>

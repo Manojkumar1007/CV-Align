@@ -13,6 +13,7 @@ function JobDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showUpload, setShowUpload] = useState(false);
+  const [processingUpload, setProcessingUpload] = useState(false);
 
   useEffect(() => {
     fetchJobData();
@@ -51,9 +52,28 @@ function JobDetails() {
     }
   };
 
-  const handleUploadSuccess = (newEvaluation) => {
-    setCandidates([newEvaluation, ...candidates]);
+  const handleUploadSuccess = async (uploadResponse) => {
+    console.log('Upload success - starting processing state', uploadResponse);
+    // Show processing state immediately
+    setProcessingUpload(true);
     setShowUpload(false);
+    
+    try {
+      // Fetch the full evaluation data using the evaluation_id
+      const evaluationResponse = await evaluationsAPI.getEvaluation(uploadResponse.evaluation_id);
+      console.log('Full evaluation data:', evaluationResponse.data);
+      
+      // Hide processing state and add the full candidate data
+      setTimeout(() => {
+        console.log('Processing complete - adding candidate and hiding loading');
+        setCandidates([evaluationResponse.data, ...candidates]);
+        setProcessingUpload(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error fetching evaluation data:', error);
+      setProcessingUpload(false);
+      setError('Failed to load candidate data after upload');
+    }
   };
 
   const handleCandidateDeleted = (deletedCandidateId) => {
@@ -129,8 +149,12 @@ function JobDetails() {
       )}
 
       <div className="candidates-section">
-        <h2>Candidates ({candidates.length})</h2>
-        <CandidateList candidates={candidates} onCandidateDeleted={handleCandidateDeleted} />
+        <h2>Candidates ({processingUpload ? candidates.length + 1 : candidates.length})</h2>
+        <CandidateList 
+          candidates={candidates} 
+          onCandidateDeleted={handleCandidateDeleted}
+          processingUpload={processingUpload}
+        />
       </div>
     </div>
   );

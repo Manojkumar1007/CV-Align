@@ -45,6 +45,8 @@ A comprehensive web application that uses RAG (Retrieval-Augmented Generation) w
 - Node.js 14+
 - npm or yarn
 
+**Note**: Use `python3` command on Mac/Linux and `python` command on Windows.
+
 ### Backend Setup
 
 1. **Navigate to backend directory**:
@@ -65,11 +67,19 @@ A comprehensive web application that uses RAG (Retrieval-Augmented Generation) w
 
 4. **Initialize database**:
    ```bash
+   # Mac/Linux:
+   python3 -m app.database.init_db
+   
+   # Windows:
    python -m app.database.init_db
    ```
 
 5. **Start the server**:
    ```bash
+   # Mac/Linux:
+   python3 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   
+   # Windows:
    python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
    ```
 
@@ -205,8 +215,14 @@ REACT_APP_UPLOAD_URL=http://127.0.0.1:8000
 ```bash
 # Backend tests
 cd backend
+
+# Mac/Linux:
 source venv/bin/activate
-pytest
+python3 -m pytest
+
+# Windows:
+venv\Scripts\activate
+python -m pytest
 
 # Frontend tests
 cd frontend

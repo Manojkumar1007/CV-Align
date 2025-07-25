@@ -115,7 +115,7 @@ function CVUpload({ jobId, onUploadSuccess }) {
           disabled={!file || uploading}
           className="btn btn-primary"
         >
-          {uploading ? 'Processing...' : 'Upload and Evaluate'}
+{uploading ? 'Uploading and Processing...' : 'Upload and Evaluate'}
         </button>
       </div>
     </div>
