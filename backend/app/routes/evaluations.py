@@ -61,7 +61,13 @@ async def upload_and_evaluate_cv(
         cv_sections = document_processor.extract_cv_sections(cv_text)
         candidate_info = document_processor.extract_candidate_info(cv_text)
         
-        evaluation_result = rag_engine.evaluate_cv_against_job(
+        # Chunk the CV sections for better RAG processing using LangChain
+        cv_chunks = document_processor.chunk_cv_sections_with_langchain(cv_sections)
+        
+        # Add chunks to the RAG engine for retrieval if needed
+        rag_engine.add_cv_chunks(cv_chunks)
+        
+        evaluation_result = rag_engine.evaluate_cv_with_rag_context(
             cv_sections, job.description, job.requirements
         )
         

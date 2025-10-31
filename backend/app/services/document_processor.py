@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from PyPDF2 import PdfReader
 from docx import Document
 import aiofiles
@@ -212,3 +212,19 @@ class DocumentProcessor:
             'email': email_match.group() if email_match else None,
             'phone': phone_match.group() if phone_match else None
         }
+
+    def chunk_text_with_langchain(self, text: str, chunk_size: int = 500, chunk_overlap: int = 50) -> List[str]:
+        """
+        Delegate text chunking to the LLM service using LangChain.
+        """
+        from .llm_service import LLMService
+        llm_service = LLMService()
+        return llm_service.split_text(text)
+    
+    def chunk_cv_sections_with_langchain(self, cv_sections: Dict[str, str], chunk_size: int = 500, chunk_overlap: int = 50) -> List[Dict[str, str]]:
+        """
+        Delegate CV section chunking to the LLM service using LangChain.
+        """
+        from .llm_service import LLMService
+        llm_service = LLMService()
+        return llm_service.split_cv_sections(cv_sections)

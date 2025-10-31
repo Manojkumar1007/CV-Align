@@ -18,6 +18,8 @@ A comprehensive web application that uses RAG (Retrieval-Augmented Generation) w
 
 ### Technical Features
 - **RAG Engine**: Advanced document processing with FAISS vector database
+- **Semantic Chunking**: Intelligent text segmentation using LangChain
+- **Gemma Embeddings**: Powered by Google's embeddingGemma model via Ollama
 - **Real-time Processing**: Fast CV evaluation (typically under 30 seconds)
 - **Responsive Design**: Modern React frontend with intuitive UI
 - **RESTful API**: Well-documented FastAPI backend

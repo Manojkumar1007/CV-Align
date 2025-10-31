@@ -1,6 +1,6 @@
-# GEMINI.md
+# QWEN.md
 
-This file provides guidance to Gemini when working with code in this repository.
+This file provides guidance to Qwen when working with code in this repository.
 
 ## Project Overview
 

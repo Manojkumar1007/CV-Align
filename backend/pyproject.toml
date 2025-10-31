@@ -37,10 +37,3 @@ multi_line_output = 3
 line_length = 88
 known_first_party = ["app"]
 known_third_party = ["fastapi", "sqlalchemy", "pydantic", "langchain", "sentence_transformers"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "-v --tb=short"

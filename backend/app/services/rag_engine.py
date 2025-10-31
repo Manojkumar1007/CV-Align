@@ -1,11 +1,11 @@
 import os
 import numpy as np
 from typing import List, Dict, Any
-from sentence_transformers import SentenceTransformer
 import faiss
 import pickle
 from dataclasses import dataclass
 import json
+from .llm_service import LLMService
 
 @dataclass
 class EvaluationResult:
@@ -19,11 +19,12 @@ class EvaluationResult:
     recommendations: List[str]
 
 class RAGEngine:
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
-        self.model = SentenceTransformer(model_name)
+    def __init__(self, model_name: str = "embeddinggemma:300m"):
+        self.llm_service = LLMService(model_name)
         self.vector_db_path = os.getenv("VECTOR_DB_PATH", "./database/vector_store")
         self.index = None
         self.documents = []
+        # Initialize with a placeholder dimension, will be updated in _initialize_vector_store
         self._initialize_vector_store()
     
     def _initialize_vector_store(self):
@@ -34,18 +35,25 @@ class RAGEngine:
         
         if os.path.exists(index_path) and os.path.exists(docs_path):
             self.index = faiss.read_index(index_path)
+            self.embedding_dimension = self.index.d  # Get dimension from existing index
             with open(docs_path, 'rb') as f:
                 self.documents = pickle.load(f)
         else:
-            dimension = 384  # all-MiniLM-L6-v2 embedding dimension
-            self.index = faiss.IndexFlatIP(dimension)
+            # Use a sample embedding to determine the correct dimension
+            sample_embedding = self.llm_service.embed_query("sample text")
+            self.embedding_dimension = len(sample_embedding)
+            print(f"Initialized FAISS index with embedding dimension: {self.embedding_dimension}")
+            self.index = faiss.IndexFlatIP(self.embedding_dimension)
             self.documents = []
     
     def add_documents(self, texts: List[str], metadata: List[Dict] = None):
         if metadata is None:
             metadata = [{}] * len(texts)
         
-        embeddings = self.model.encode(texts)
+        # Generate embeddings using Ollama with embeddingGemma
+        embeddings = self.llm_service.embed_documents(texts)
+        embeddings = np.array(embeddings)
+        # Normalize embeddings for cosine similarity
         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
         
         self.index.add(embeddings.astype('float32'))
@@ -57,6 +65,94 @@ class RAGEngine:
             })
         
         self._save_vector_store()
+    
+    def add_cv_chunks(self, cv_chunks: List[Dict[str, str]]):
+        """
+        Add chunked CV content to the vector store with appropriate metadata.
+        
+        Args:
+            cv_chunks: List of dictionaries containing 'text' and 'metadata' keys
+        """
+        texts = [chunk['text'] for chunk in cv_chunks]
+        metadatas = [chunk['metadata'] for chunk in cv_chunks]
+        
+        self.add_documents(texts, metadatas)
+
+    def search_cv_chunks(self, query: str, k: int = 5, section_filter: str = None) -> List[Dict]:
+        """
+        Search for similar CV chunks, with optional section filtering.
+        
+        Args:
+            query: The search query
+            k: Number of results to return
+            section_filter: Optional section to filter by ('skills', 'experience', etc.)
+            
+        Returns:
+            List of matching chunks with metadata
+        """
+        results = self.search_similar(query, k)
+        
+        if section_filter:
+            results = [r for r in results if r['metadata'].get('section') == section_filter]
+        
+        return results
+
+    def evaluate_cv_with_rag_context(self, cv_sections: Dict[str, str], job_description: str, job_requirements: str) -> EvaluationResult:
+        """
+        Enhanced evaluation using RAG to retrieve relevant context from CV chunks.
+        
+        Args:
+            cv_sections: Dictionary containing CV sections
+            job_description: Job description
+            job_requirements: Job requirements
+            
+        Returns:
+            EvaluationResult with scores and feedback
+        """
+        job_context = f"Job Description: {job_description}\n\nRequirements: {job_requirements}"
+        
+        # Retrieve relevant chunks for each evaluation aspect
+        skills_chunks = self.search_cv_chunks(job_requirements, k=3, section_filter='skills')
+        experience_chunks = self.search_cv_chunks(job_context, k=3, section_filter='experience')
+        education_chunks = self.search_cv_chunks(job_requirements, k=3, section_filter='education')
+        
+        # Use retrieved chunks for more targeted evaluation
+        cv_skills = cv_sections.get('skills', '')
+        cv_experience = cv_sections.get('experience', '')
+        cv_education = cv_sections.get('education', '')
+        
+        # If we find relevant chunks, we can use them as additional context
+        retrieved_skills = " ".join([chunk['text'] for chunk in skills_chunks])
+        retrieved_experience = " ".join([chunk['text'] for chunk in experience_chunks])
+        retrieved_education = " ".join([chunk['text'] for chunk in education_chunks])
+        
+        # Enhance original content with retrieved context
+        enhanced_skills = cv_skills + " " + retrieved_skills
+        enhanced_experience = cv_experience + " " + retrieved_experience
+        enhanced_education = cv_education + " " + retrieved_education
+        
+        skills_score = self._evaluate_skills_match(enhanced_skills, job_requirements)
+        experience_score = self._evaluate_experience_match(enhanced_experience, job_context)
+        education_score = self._evaluate_education_match(enhanced_education, job_requirements)
+        
+        overall_score = (skills_score * 0.4 + experience_score * 0.4 + education_score * 0.2)
+        
+        strengths, weaknesses, recommendations = self._generate_detailed_feedback(
+            cv_sections, job_context, skills_score, experience_score, education_score
+        )
+        
+        feedback = self._generate_summary_feedback(overall_score, strengths, weaknesses)
+        
+        return EvaluationResult(
+            overall_score=round(overall_score, 1),
+            skills_score=round(skills_score, 1),
+            experience_score=round(experience_score, 1),
+            education_score=round(education_score, 1),
+            feedback=feedback,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            recommendations=recommendations
+        )
     
     def _save_vector_store(self):
         index_path = os.path.join(self.vector_db_path, "faiss_index.bin")
@@ -70,7 +166,9 @@ class RAGEngine:
         if self.index.ntotal == 0:
             return []
         
-        query_embedding = self.model.encode([query])
+        # Generate embedding for query using Ollama with embeddingGemma
+        query_embedding = np.array(self.llm_service.embed_query(query)).reshape(1, -1)
+        # Normalize query embedding for cosine similarity
         query_embedding = query_embedding / np.linalg.norm(query_embedding, axis=1, keepdims=True)
         
         scores, indices = self.index.search(query_embedding.astype('float32'), k)
@@ -87,7 +185,10 @@ class RAGEngine:
         return results
     
     def calculate_similarity_score(self, text1: str, text2: str) -> float:
-        embeddings = self.model.encode([text1, text2])
+        # Generate embeddings for both texts using Ollama with embeddingGemma
+        embeddings = self.llm_service.embed_documents([text1, text2])
+        embeddings = np.array(embeddings)
+        # Normalize embeddings for cosine similarity
         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
         
         similarity = np.dot(embeddings[0], embeddings[1])
