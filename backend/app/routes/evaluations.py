@@ -12,7 +12,7 @@ from app.services.rag_engine import RAGEngine
 
 router = APIRouter()
 document_processor = DocumentProcessor()
-rag_engine = RAGEngine()
+rag_engine = RAGEngine(embedding_model_name="embeddinggemma:300m", generation_model_name="gemma:4b")
 
 @router.post("/{job_id}/upload", response_model=CVUploadResponse)
 async def upload_and_evaluate_cv(

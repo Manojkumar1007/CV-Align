@@ -19,11 +19,11 @@ def test_langchain_gemma_implementation():
     
     # Check if Ollama is available
     try:
-        llm_service = LLMService("embeddinggemma:300m")
-        print("✓ LLM Service initialized with embeddinggemma:300m")
+        llm_service = LLMService(embedding_model_name="embeddinggemma:300m", generation_model_name="gemma:4b")
+        print("✓ LLM Service initialized with embeddinggemma:300m and gemma:4b")
     except Exception as e:
         print(f"⚠ Could not initialize LLM Service: {e}")
-        print("Make sure Ollama is running and 'embeddinggemma:300m' model is pulled with: ollama pull embeddinggemma:300m")
+        print("Make sure Ollama is running and both 'embeddinggemma:300m' and 'gemma:4b' models are pulled with: ollama pull embeddinggemma:300m gemma:4b")
         return False
     
     # Sample CV text
@@ -92,7 +92,7 @@ def test_langchain_gemma_implementation():
     # Test RAG engine with Gemma embeddings
     print("\n3. Testing RAG engine with Gemma embeddings...")
     try:
-        rag_engine = RAGEngine("embeddinggemma:300m")
+        rag_engine = RAGEngine(embedding_model_name="embeddinggemma:300m", generation_model_name="gemma:4b")
         
         # Add the chunks to the RAG engine
         rag_engine.add_cv_chunks(cv_chunks)
@@ -130,11 +130,41 @@ def test_langchain_gemma_implementation():
         print(f"  Education Score: {evaluation_result.education_score}")
         print(f"  Feedback: {evaluation_result.feedback[:100]}...")
     except Exception as e:
-        print(f"✗ Error in evaluation: {e}")
+        print(f"✗ Error in RAG-enhanced evaluation: {e}")
+        return False
+
+    # Test new soft skills evaluation
+    print("\n6. Testing soft skills evaluation with LLM...")
+    try:
+        soft_skills_score = rag_engine.get_soft_skills_score(cv_sections, job_description)
+        print(f"✓ Soft skills score: {soft_skills_score}")
+
+        # Test contextual evaluation
+        context_score = rag_engine.get_contextual_score(cv_sections, job_description, job_requirements)
+        print(f"✓ Contextual understanding score: {context_score}")
+    except Exception as e:
+        print(f"✗ Error in soft skills evaluation: {e}")
+        return False
+
+    # Test regular evaluation method (not just the RAG context one)
+    print("\n7. Testing regular evaluation method...")
+    try:
+        regular_evaluation_result = rag_engine.evaluate_cv_against_job(
+            cv_sections, job_description, job_requirements
+        )
+
+        print(f"✓ Regular evaluation completed!")
+        print(f"  Overall Score: {regular_evaluation_result.overall_score}")
+        print(f"  Skills Score: {regular_evaluation_result.skills_score}")
+        print(f"  Experience Score: {regular_evaluation_result.experience_score}")
+        print(f"  Education Score: {regular_evaluation_result.education_score}")
+        print(f"  Feedback: {regular_evaluation_result.feedback[:100]}...")
+    except Exception as e:
+        print(f"✗ Error in regular evaluation: {e}")
         return False
     
-    print("\n✓ All tests passed! LangChain + Gemma implementation is working correctly.")
-    print("\nNote: For production use, ensure Ollama is running and 'embeddinggemma:300m' model is available.")
+    print("\n✓ All tests passed! Dual-model LangChain + Gemma implementation is working correctly.")
+    print("\nNote: For production use, ensure Ollama is running and both 'embeddinggemma:300m' and 'gemma:4b' models are available.")
     return True
 
 

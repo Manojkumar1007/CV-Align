@@ -1,15 +1,27 @@
 from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.llms import Ollama
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from typing import List
 import os
 
 class LLMService:
-    def __init__(self, model_name: str = "embeddinggemma:300m"):
-        self.model_name = model_name
+    def __init__(self, embedding_model_name: str = "embeddinggemma:300m", generation_model_name: str = "gemma:4b"):
+        self.embedding_model_name = embedding_model_name
+        self.generation_model_name = generation_model_name
+        
+        # Initialize embeddings service
         self.embeddings = OllamaEmbeddings(
-            model=model_name,
+            model=embedding_model_name,
             base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         )
+        
+        # Initialize text generation service
+        self.generator = Ollama(
+            model=generation_model_name,
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            temperature=0.2  # Lower temperature for more consistent evaluations
+        )
+        
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=500,
             chunk_overlap=50,
@@ -42,6 +54,12 @@ class LLMService:
         Generate embedding for a single query using embeddingGemma via Ollama
         """
         return self.embeddings.embed_query(query)
+    
+    def generate_text(self, prompt: str) -> str:
+        """
+        Generate text using the LLM (e.g., Gemma) for evaluation tasks
+        """
+        return self.generator.invoke(prompt)
     
     def split_cv_sections(self, cv_sections: dict) -> List[dict]:
         """

@@ -52,7 +52,7 @@ def test_chunking():
     
     # Test basic text chunking
     print("\n1. Testing basic text chunking...")
-    chunks = processor.chunk_text(sample_cv_text, chunk_size=200, overlap=20)
+    chunks = processor.chunk_text_with_langchain(sample_cv_text, chunk_size=200, chunk_overlap=20)
     print(f"Generated {len(chunks)} chunks from sample text")
     for i, chunk in enumerate(chunks):
         print(f"  Chunk {i+1} ({len(chunk)} chars): {chunk[:60]}...")
@@ -62,7 +62,7 @@ def test_chunking():
     cv_sections = processor.extract_cv_sections(sample_cv_text)
     print(f"Extracted sections: {list(cv_sections.keys())}")
     
-    cv_chunks = processor.chunk_cv_sections(cv_sections)
+    cv_chunks = processor.chunk_cv_sections_with_langchain(cv_sections)
     print(f"Generated {len(cv_chunks)} section chunks with metadata:")
     for i, chunk in enumerate(cv_chunks):
         print(f"  Chunk {i+1}: section='{chunk['metadata']['section']}', "
@@ -72,7 +72,7 @@ def test_chunking():
     
     # Test RAG engine with chunks
     print("\n3. Testing RAG engine integration...")
-    rag_engine = RAGEngine()
+    rag_engine = RAGEngine(embedding_model_name="embeddinggemma:300m", generation_model_name="gemma:4b")
     
     # Add the chunks to the RAG engine
     rag_engine.add_cv_chunks(cv_chunks)
@@ -101,7 +101,19 @@ def test_chunking():
     print(f"  Experience Score: {evaluation_result.experience_score}")
     print(f"  Education Score: {evaluation_result.education_score}")
     print(f"  Feedback: {evaluation_result.feedback[:100]}...")
-    
+
+    # Test new soft skills evaluation
+    print("\n6. Testing soft skills evaluation with LLM...")
+    try:
+        soft_skills_score = rag_engine.get_soft_skills_score(cv_sections, job_description)
+        print(f"✓ Soft skills score: {soft_skills_score}")
+
+        # Test contextual evaluation
+        context_score = rag_engine.get_contextual_score(cv_sections, job_description, job_requirements)
+        print(f"✓ Contextual understanding score: {context_score}")
+    except Exception as e:
+        print(f"✗ Error in soft skills evaluation: {e}")
+
     print("\nChunking functionality test completed successfully!")
 
 

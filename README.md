@@ -5,10 +5,10 @@ A comprehensive web application that uses RAG (Retrieval-Augmented Generation) w
 ## Features
 
 ### Core Functionality
-- **Automated CV Evaluation**: AI-powered analysis using RAG pipeline with vector embeddings
+- **Automated CV Evaluation**: AI-powered analysis using dual model RAG pipeline with vector embeddings and LLM-based evaluation
 - **Job Management**: Create and manage job postings with detailed requirements
-- **Candidate Ranking**: Automatic ranking based on skills, experience, and education match
-- **Detailed Feedback**: Comprehensive evaluation with strengths, weaknesses, and recommendations
+- **Candidate Ranking**: Automatic ranking based on skills, experience, education, and soft skills match
+- **Detailed Feedback**: Comprehensive evaluation with strengths, weaknesses, recommendations, and personalized insights
 - **Multi-format Support**: Process PDF, DOCX, and TXT files
 
 ### User Management
@@ -17,9 +17,12 @@ A comprehensive web application that uses RAG (Retrieval-Augmented Generation) w
 - **JWT Authentication**: Secure login and session management
 
 ### Technical Features
-- **RAG Engine**: Advanced document processing with FAISS vector database
+- **Dual Model RAG Engine**: Advanced document processing with FAISS vector database and LLM-based evaluation
 - **Semantic Chunking**: Intelligent text segmentation using LangChain
 - **Gemma Embeddings**: Powered by Google's embeddingGemma model via Ollama
+- **LLM-based Scoring**: Enhanced evaluation using Gemma 4b for more nuanced scoring
+- **Soft Skills Assessment**: AI-powered evaluation of interpersonal skills
+- **Contextual Understanding**: Role-specific evaluation considering job context and industry requirements
 - **Real-time Processing**: Fast CV evaluation (typically under 30 seconds)
 - **Responsive Design**: Modern React frontend with intuitive UI
 - **RESTful API**: Well-documented FastAPI backend
@@ -199,7 +202,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 UPLOAD_DIR=./uploads
 MAX_FILE_SIZE=10485760
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_MODEL=embeddinggemma:300m
 VECTOR_DB_PATH=./database/vector_store
 DEBUG=True
 LOG_LEVEL=INFO
